@@ -6,11 +6,12 @@ interface HackerLoginProps {
 
 const HackerLogin: React.FC<HackerLoginProps> = ({ onLoginSuccess }) => {
   const [terminalLines, setTerminalLines] = useState<string[]>([
-    "INITIALIZING WATO PROTOCOL v11.0...",
+    "INITIALIZING WATTO PROTOCOL v11.0...",
   ]);
   const [isHacking, setIsHacking] = useState(false);
   const [accessGranted, setAccessGranted] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
+  const soundIntervalRef = useRef<number | null>(null);
 
   const scrollToBottom = () => {
     terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -20,29 +21,73 @@ const HackerLogin: React.FC<HackerLoginProps> = ({ onLoginSuccess }) => {
     scrollToBottom();
   }, [terminalLines]);
 
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      if (soundIntervalRef.current) window.clearInterval(soundIntervalRef.current);
+    };
+  }, []);
+
   const handleHack = () => {
     if (isHacking) return;
     setIsHacking(true);
     
+    // --- AUDIO SFX SETUP (HORRIFIED/TENSE) ---
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    const audioCtx = new AudioContext();
+    
+    // Start Hacking SFX Loop (Low Frequency / Tense)
+    soundIntervalRef.current = window.setInterval(() => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        // SAWTOOTH for harshness
+        osc.type = 'sawtooth'; 
+        
+        // LOW Frequency for horror/tension (between 50Hz and 120Hz)
+        osc.frequency.setValueAtTime(50 + Math.random() * 70, audioCtx.currentTime);
+        
+        // Slide pitch slightly down for "sinking" feeling
+        osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+
+        // Volume Envelope
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }, 120); // Slower interval for heavy, ominous pulses
+
     const sequence = [
       "ESTABLISHING HANDSHAKE...",
       "BYPASSING FIREWALL...",
       "ACCESSING CRICKET_DB...",
       "LOADING PLAYER_STATS_MODULE...",
       "ENABLING PRO SCORING ENGINE...",
-      "WELCOME TO WATO ELEVEN SCORE CARD PRO"
+      "ACCESS GRANTED."
     ];
 
     let delay = 0;
     sequence.forEach((line, index) => {
-      delay += Math.random() * 500 + 200;
+      const lineDelay = Math.random() * 600 + 300; // Variable delay for realism
+      delay += lineDelay;
+      
       setTimeout(() => {
         setTerminalLines(prev => [...prev, `> ${line}`]);
+        
+        // If last line
         if (index === sequence.length - 1) {
+          // Stop Hacking Sounds
+          if (soundIntervalRef.current) window.clearInterval(soundIntervalRef.current);
+          
           setTimeout(() => {
             setAccessGranted(true);
-            setTimeout(onLoginSuccess, 2000);
-          }, 1000);
+            // Voice removed as requested.
+            // Short delay to see "Access Granted" visual then proceed
+            setTimeout(onLoginSuccess, 1500); 
+          }, 800);
         }
       }, delay);
     });
@@ -60,7 +105,7 @@ const HackerLogin: React.FC<HackerLoginProps> = ({ onLoginSuccess }) => {
 
       <div className="z-10 w-full max-w-2xl border border-green-700 bg-black/95 shadow-[0_0_50px_rgba(34,197,94,0.2)] rounded-sm p-1">
         <div className="flex justify-between items-center bg-green-900/10 px-4 py-2 border-b border-green-800 mb-2">
-          <span className="text-xs tracking-widest text-green-600">ROOT@WATO-SERVER:~</span>
+          <span className="text-xs tracking-widest text-green-600">ROOT@WATTO-SERVER:~</span>
           <div className="flex space-x-2">
             <div className="w-2 h-2 rounded-full bg-red-900"></div>
             <div className="w-2 h-2 rounded-full bg-yellow-900"></div>
@@ -70,7 +115,7 @@ const HackerLogin: React.FC<HackerLoginProps> = ({ onLoginSuccess }) => {
 
         <div className="h-80 overflow-y-auto p-4 space-y-1 text-sm md:text-base font-bold">
           {terminalLines.map((line, idx) => (
-            <div key={idx} className={`${line.includes("WELCOME") ? "text-green-400 text-lg mt-4 animate-pulse border-l-4 border-green-500 pl-2" : "text-green-600/90"}`}>
+            <div key={idx} className={`${line.includes("ACCESS GRANTED") ? "text-green-400 text-lg mt-4 animate-pulse border-l-4 border-green-500 pl-2" : "text-green-600/90"}`}>
               {line}
             </div>
           ))}
@@ -100,7 +145,7 @@ const HackerLogin: React.FC<HackerLoginProps> = ({ onLoginSuccess }) => {
           <div className="text-center space-y-4">
              <div className="inline-block border-2 border-green-500 p-8 rounded-lg shadow-[0_0_50px_rgba(34,197,94,0.4)] bg-gray-900/50 backdrop-blur-sm">
                 <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-2">
-                  WATO <span className="text-green-500">ELEVEN</span>
+                  WATTO <span className="text-green-500">ELEVEN</span>
                 </h1>
                 <div className="h-1 w-full bg-green-500 mb-4 shadow-[0_0_10px_#22c55e]"></div>
                 <p className="text-green-400 font-mono tracking-widest text-xl">

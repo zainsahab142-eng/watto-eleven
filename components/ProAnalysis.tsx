@@ -39,7 +39,7 @@ const ProAnalysis: React.FC<ProAnalysisProps> = ({ matchState }) => {
           
           <div className="flex justify-between items-center mb-6 pl-4">
             <h3 className="text-yellow-500 font-black tracking-widest text-lg flex items-center gap-2">
-              <span className="text-2xl">⚡</span> WATO INTELLIGENCE
+              <span className="text-2xl">⚡</span> WATTO INTELLIGENCE
             </h3>
             <button 
                 onClick={handleAnalyze} 

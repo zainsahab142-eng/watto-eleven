@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MatchState, PlayerStats, MatchSummary, Team } from '../types';
+import { MatchState, PlayerStats, Team } from '../types';
 
 interface ScoreBoardProps {
   initialState: MatchState;
@@ -40,7 +40,6 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({ initialState, onMatchEnd, onBac
   const bgMain = isDarkMode ? 'bg-black text-white' : 'bg-gray-100 text-gray-900';
   const bgCard = isDarkMode ? 'bg-gray-900/50 border-green-900/50' : 'bg-white border-gray-300 shadow-sm';
   const borderHighlight = isDarkMode ? 'border-green-600' : 'border-green-600';
-  const textMuted = isDarkMode ? 'text-gray-500' : 'text-gray-500';
   const bgInput = isDarkMode ? 'bg-black border-green-800 text-white focus:border-green-500' : 'bg-gray-50 border-gray-300 text-gray-900';
   
   // Tactical Button Styles
@@ -51,24 +50,38 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({ initialState, onMatchEnd, onBac
   const btnGreen = `bg-green-600 border-green-800 text-white hover:bg-green-500`;
   const btnRed = `bg-red-600 border-red-800 text-white hover:bg-red-500`;
   const btnYellow = `bg-yellow-600 border-yellow-800 text-white hover:bg-yellow-500`;
-  const btnBlue = `bg-blue-600 border-blue-800 text-white hover:bg-blue-500`;
 
   useEffect(() => {
      localStorage.setItem('wato_active_match', JSON.stringify(match));
      
+     // --- CHECK IF INNING IS OVER FIRST ---
+     const oversParts = match.battingTeam.oversPlayed.split('.');
+     const totalBallsBowled = (parseInt(oversParts[0]) * 6) + parseInt(oversParts[1]);
+     const maxBalls = match.config.totalOvers * 6;
+     const isAllOut = match.battingTeam.wickets >= 10;
+     const isOversFinished = totalBallsBowled >= maxBalls;
+
+     // If the inning is physically over (10 wickets or Overs limit reached), 
+     // STOP asking for new players.
+     if ((isAllOut || isOversFinished) && match.status !== 'completed') {
+         setWaitingFor('none');
+         return; 
+     }
+
+     // --- NORMAL FLOW FOR NEW PLAYERS ---
      const striker = match.battingTeam.players[match.currentStrikerId];
-     if (striker.isOut && match.status !== 'completed' && match.battingTeam.wickets < 10) {
+     if (striker.isOut && match.status !== 'completed' && !isAllOut) {
          setWaitingFor('striker');
          return;
      }
 
      const bowler = match.bowlingTeam.players[match.currentBowlerId];
-     if (bowler.ballsBowled > 0 && bowler.ballsBowled % 6 === 0 && match.status !== 'completed') {
-         const oversParts = match.battingTeam.oversPlayed.split('.');
-         const ballsInCurrentOver = parseInt(oversParts[1]);
-         if (ballsInCurrentOver === 0) {
-             setWaitingFor('bowler');
-         }
+     // Check if over is completed (divisible by 6) and balls > 0
+     // But strictly verify using the team total overs string to ensure we just finished an over
+     const ballsInCurrentOver = parseInt(oversParts[1]);
+     
+     if (bowler.ballsBowled > 0 && ballsInCurrentOver === 0 && !isOversFinished && match.status !== 'completed') {
+         setWaitingFor('bowler');
      }
   }, [match]);
 
@@ -200,17 +213,11 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({ initialState, onMatchEnd, onBac
       setMatch(completedMatch);
       setShowWinner(true);
       
-      const historyItem: MatchSummary = {
-          id: completedMatch.id,
-          date: completedMatch.date,
-          teamA: completedMatch.config.teamA,
-          teamB: completedMatch.config.teamB,
-          winner: winnerName,
-          result: resultText
-      };
-      
+      // Save FULL match state to history, not just summary
       const existingHistory = JSON.parse(localStorage.getItem('wato_history') || '[]');
-      localStorage.setItem('wato_history', JSON.stringify([historyItem, ...existingHistory]));
+      // Remove any partial match with same ID if exists to update it
+      const filteredHistory = existingHistory.filter((m: any) => m.id !== completedMatch.id);
+      localStorage.setItem('wato_history', JSON.stringify([completedMatch, ...filteredHistory]));
   };
 
   const addBall = (run: number | string) => {
@@ -289,7 +296,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({ initialState, onMatchEnd, onBac
   useEffect(() => { checkMatchStatus(match); }, [match.battingTeam.score, match.battingTeam.wickets, match.battingTeam.oversPlayed]);
 
   const shareMatch = () => {
-      const text = `🏏 *WATO ELEVEN SCORE CARD* 🏏\n${match.config.teamA} vs ${match.config.teamB}\n${match.status === 'completed' ? `RESULT: ${match.winMargin}` : 'MATCH LIVE'}\n\n*WATO ELEVEN PRO*`;
+      const text = `🏏 *WATTO ELEVEN SCORE CARD* 🏏\n${match.config.teamA} vs ${match.config.teamB}\n${match.status === 'completed' ? `RESULT: ${match.winMargin}` : 'MATCH LIVE'}\n\n*WATTO ELEVEN PRO*`;
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(url, '_blank');
   };
@@ -352,13 +359,10 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({ initialState, onMatchEnd, onBac
   }
 
   if (showWinner) {
-      // (Winner Screen Logic remains mostly same, just styled)
       return (
           <div className={`fixed inset-0 z-50 overflow-y-auto ${bgMain} p-4`}>
               <div className="max-w-2xl mx-auto space-y-6">
                  <button onClick={onMatchEnd} className="absolute top-4 left-4 text-gray-500 hover:text-white">⬅ MENU</button>
-                 {/* ... Summary Content styled similar to Main UI ... */}
-                 {/* Reusing main logic, just simplified return for brevity, full logic in main render */}
                   <div className="text-center py-20">
                       <h1 className="text-6xl font-black text-green-500 mb-4 animate-pulse">{match.winner} WINS</h1>
                       <p className="text-2xl text-white font-mono">{match.winMargin}</p>
@@ -383,7 +387,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({ initialState, onMatchEnd, onBac
               <span className="text-xl group-hover:-translate-x-1 transition-transform">❮</span> BACK
           </button>
           <div className="text-center">
-              <div className="text-[10px] text-green-600 font-black tracking-[0.3em]">WATO ELEVEN PRO</div>
+              <div className="text-[10px] text-green-600 font-black tracking-[0.3em]">WATTO ELEVEN PRO</div>
               <div className="font-bold text-sm text-gray-300">{match.battingTeam.name} vs {match.bowlingTeam.name}</div>
           </div>
           <div className="w-16"></div> {/* Spacer for alignment */}
@@ -506,7 +510,7 @@ const ScoreBoard: React.FC<ScoreBoardProps> = ({ initialState, onMatchEnd, onBac
            {/* Next Inning Button Check */}
             {match.currentInning === 1 && (match.battingTeam.wickets >= 10 || match.battingTeam.oversPlayed.startsWith(match.config.totalOvers.toString())) && (
                 <button onClick={startSecondInning} className="w-full py-4 mt-4 bg-green-600 text-black font-black text-xl rounded shadow-[0_0_20px_rgba(34,197,94,0.6)] animate-bounce uppercase tracking-widest">
-                     START 2ND INNING 
+                    >>> START 2ND INNING >>>
                 </button>
             )}
 

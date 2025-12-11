@@ -45,7 +45,7 @@ const App: React.FC = () => {
         return (
           <div className={`min-h-screen flex flex-col items-center justify-center p-4 space-y-6 ${isDarkMode ? 'bg-black text-white' : 'bg-gray-100 text-gray-900'}`}>
             <h1 className="text-4xl md:text-6xl font-black italic tracking-tighter mb-4 text-center">
-              WATO <span className="text-green-600">ELEVEN</span>
+              WATTO <span className="text-green-600">ELEVEN</span>
             </h1>
             
             {/* Theme Toggle */}
@@ -92,7 +92,7 @@ const App: React.FC = () => {
             </div>
             
             <div className={`mt-8 text-xs font-mono ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
-                v2.1 PRO | WATO SPORTS
+                v2.1 PRO | WATTO SPORTS
             </div>
           </div>
         );
